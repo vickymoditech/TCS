@@ -1,0 +1,117 @@
+openapi: 3.0.0
+info:
+  title: Cart Service
+  version: 1.0.0
+paths:
+  /api/cart:
+    post:
+      summary: Create a cart
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+  /api/cart/{cartId}:
+    get:
+      summary: Get cart
+      parameters:
+        - in: path
+          name: cartId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+  /api/cart/items:
+    post:
+      summary: Add or update items
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cartId:
+                  type: string
+                cartItem:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/CartItemRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+  /api/cart/{cartId}/items/{itemId}:
+    delete:
+      summary: Remove item
+      parameters:
+        - in: path
+          name: cartId
+          schema:
+            type: string
+        - in: path
+          name: itemId
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartResponse'
+components:
+  schemas:
+    CartItemRequest:
+      type: object
+      properties:
+        itemId:
+          type: string
+        qty:
+          type: integer
+    CartItemResponse:
+      type: object
+      properties:
+        itemId:
+          type: string
+        name:
+          type: string
+        qty:
+          type: integer
+        price:
+          type: number
+        total:
+          type: number
+    InvalidCartItem:
+      type: object
+      properties:
+        itemId:
+          type: string
+        reason:
+          type: string
+    CartResponse:
+      type: object
+      properties:
+        cartId:
+          type: string
+        cartItem:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItemResponse'
+        invalidItem:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvalidCartItem'
+        basketTotal:
+          type: number

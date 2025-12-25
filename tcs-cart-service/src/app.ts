@@ -1,0 +1,34 @@
+import express from 'express';
+import routes from './routes';
+import { globalErrorHandler } from './middleware/errorHandler';
+import swaggerUi from 'swagger-ui-express';
+import YAML from 'yamljs';
+import { NODE_ENV } from './config';
+import { log } from './utils/logger';
+import { startSweeper } from './integrations/saleforceSweeper';
+
+const app = express();
+app.use(express.json());
+
+// start background sweeper unless in test mode
+if (NODE_ENV !== 'test') {
+  startSweeper();
+}
+
+// simple request logger
+app.use((req, res, next) => {
+  res.on('finish', () => {
+    log.info(req.method, req.path, res.statusCode, new Date().toISOString());
+  });
+  next();
+});
+
+app.use(routes);
+
+// swagger
+const swaggerDocument = YAML.load(__dirname + '/swagger.yaml');
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
+app.use(globalErrorHandler);
+
+export default app;
