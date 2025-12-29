@@ -2,14 +2,16 @@
  * Small logging wrapper used by the app so we have a single place to replace
  * or enhance logging behavior (e.g., add structured logs or external sinks).
  */
+/* eslint-disable no-unused-vars */
 export interface Logger {
-  info: (...args: unknown[]) => void;
-  warn: (...args: unknown[]) => void;
-  error: (...args: unknown[]) => void;
+  info: (...items: unknown[]) => void;
+  warn: (...items: unknown[]) => void;
+  error: (...items: unknown[]) => void;
 }
 
 export const log: Logger = {
-  info: (...args: unknown[]) => console.log('[info]', ...args),
-  warn: (...args: unknown[]) => console.warn('[warn]', ...args),
-  error: (...args: unknown[]) => console.error('[error]', ...args),
+  info: (...items: unknown[]) => console.log('[info]', ...items),
+  warn: (...items: unknown[]) => console.warn('[warn]', ...items),
+  error: (...items: unknown[]) => console.error('[error]', ...items),
 };
+/* eslint-enable no-unused-vars */

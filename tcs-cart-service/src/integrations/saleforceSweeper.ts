@@ -13,7 +13,7 @@ export function sweepOnce() {
   return expired.map((c) => c.id);
 } 
 
-let interval: NodeJS.Timeout | null = null;
+let interval: ReturnType<typeof setInterval> | null = null;
 
 /**
  * Start a periodic sweeper that deletes expired Salesforce contexts.

@@ -90,48 +90,43 @@ export class CartService {
     }
 
     // Process valid items against Salesforce with expiry handling
-    try {
-      for (const it of validItems) {
-        try {
-          this.sfService.addItem(s.sfContextId, it);
-        } catch (err) {
-          if (SalesforceService.isExpiredError(err)) {
-            // Recover: create new context, replay, retry current
-            const newCtx = this.sfService.createContext();
-            // replay
-            for (const existing of s.items) {
-              try {
-                this.sfService.addItem(newCtx, existing);
-              } catch (replayErr) {
-                // if replay fails for some existing item, mark as invalid but continue
-                invalid.push({ itemId: existing.itemId, reason: INVALID_ITEM_REASONS.REPLAY_FAILED });
-              }
+    for (const it of validItems) {
+      try {
+        this.sfService.addItem(s.sfContextId, it);
+      } catch (err) {
+        if (SalesforceService.isExpiredError(err)) {
+          // Recover: create new context, replay, retry current
+          const newCtx = this.sfService.createContext();
+          // replay
+          for (const existing of s.items) {
+            try {
+              this.sfService.addItem(newCtx, existing);
+            } catch (replayErr) {
+              // if replay fails for some existing item, mark as invalid but continue
+              invalid.push({ itemId: existing.itemId, reason: INVALID_ITEM_REASONS.REPLAY_FAILED });
             }
-            // update store context (record new context timestamp)
-            store.updateContext(cartId, newCtx, Date.now());
-            s.sfContextId = newCtx;
-            s.sfContextCreatedAt = Date.now();
-            // retry failed add
-            this.sfService.addItem(s.sfContextId, it);
-          } else {
-            throw err;
           }
+          // update store context (record new context timestamp)
+          store.updateContext(cartId, newCtx, Date.now());
+          s.sfContextId = newCtx;
+          s.sfContextCreatedAt = Date.now();
+          // retry failed add
+          this.sfService.addItem(s.sfContextId, it);
+        } else {
+          throw err;
         }
-
-        // update local stored items (override if exists)
-        const idx = s.items.findIndex((x) => x.itemId === it.itemId);
-        if (idx === -1) s.items.push(it);
-        else s.items[idx].qty = it.qty;
       }
 
-      // persist items
-      store.setItems(cartId, s.items);
-
-      return this.buildCartResponse(cartId, invalid);
-    } catch (err) {
-      // unexpected
-      throw err;
+      // update local stored items (override if exists)
+      const idx = s.items.findIndex((x) => x.itemId === it.itemId);
+      if (idx === -1) s.items.push(it);
+      else s.items[idx].qty = it.qty;
     }
+
+    // persist items
+    store.setItems(cartId, s.items);
+
+    return this.buildCartResponse(cartId, invalid);
   }
 
   /**
@@ -144,34 +139,30 @@ export class CartService {
     if (!s) throw new CartNotFoundError('Cart not found');
 
     try {
-      try {
-        this.sfService.removeItem(s.sfContextId, itemId);
-      } catch (err) {
-        if (SalesforceService.isExpiredError(err)) {
-          // create new context and replay
-          const newCtx = this.sfService.createContext();
-          for (const existing of s.items) {
-            if (existing.itemId === itemId) continue; // we'll remove after replay
-            try {
-              this.sfService.addItem(newCtx, existing);
-            } catch (replayErr) {
-              // log and continue; treat as item invalid at replay
-            }
-          }
-          store.updateContext(cartId, newCtx, Date.now());
-          s.sfContextId = newCtx;
-          s.sfContextCreatedAt = Date.now();
-          // now try remove on new context
-          this.sfService.removeItem(s.sfContextId, itemId);
-        } else throw err;
-      }
-
-      s.items = s.items.filter((i) => i.itemId !== itemId);
-      store.setItems(cartId, s.items);
-      return this.buildCartResponse(cartId);
+      this.sfService.removeItem(s.sfContextId, itemId);
     } catch (err) {
-      throw err;
+      if (SalesforceService.isExpiredError(err)) {
+        // create new context and replay
+        const newCtx = this.sfService.createContext();
+        for (const existing of s.items) {
+          if (existing.itemId === itemId) continue; // we'll remove after replay
+          try {
+            this.sfService.addItem(newCtx, existing);
+          } catch (replayErr) {
+            // log and continue; treat as item invalid at replay
+          }
+        }
+        store.updateContext(cartId, newCtx, Date.now());
+        s.sfContextId = newCtx;
+        s.sfContextCreatedAt = Date.now();
+        // now try remove on new context
+        this.sfService.removeItem(s.sfContextId, itemId);
+      } else throw err;
     }
+
+    s.items = s.items.filter((i) => i.itemId !== itemId);
+    store.setItems(cartId, s.items);
+    return this.buildCartResponse(cartId);
   }
 
   /**

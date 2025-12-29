@@ -6,7 +6,9 @@ import { ERROR_CODES, MESSAGES } from '../constants';
  * Global error handler that maps known domain errors to structured HTTP
  * responses and returns a 500 for unexpected failures.
  */
-export function globalErrorHandler(err: unknown, req: Request, res: Response, next: NextFunction) {
+// intentionally unused param name to keep Express error handler signature
+// eslint-disable-next-line no-unused-vars
+export function globalErrorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
   if (err instanceof CartNotFoundError) {
     return res.status(404).json({ error: { code: ERROR_CODES.CART_NOT_FOUND, message: err.message } });
   }
