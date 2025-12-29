@@ -1,5 +1,6 @@
-// Simple in-memory product catalog used for enrichment and validation
-
+/**
+ * Product model stored in the in-memory catalog.
+ */
 interface Product {
   itemId: string;
   name: string;
@@ -14,8 +15,14 @@ const PRODUCTS: Product[] = [
   { itemId: 'ITEM_3', name: 'Premium Plan', price: 30, inStock: false, eligible: true },
 ];
 
+/**
+ * Simple in-memory product catalog used for enrichment and validation.
+ */
 export const CatalogService = {
-  find(itemId: string) {
+  /**
+   * Find a product by itemId or return null when not present.
+   */
+  find(itemId: string): Product | null {
     return PRODUCTS.find((p) => p.itemId === itemId) ?? null;
   },
 };

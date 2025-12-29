@@ -6,6 +6,7 @@ import YAML from 'yamljs';
 import { NODE_ENV } from './config';
 import { log } from './utils/logger';
 import { startSweeper } from './integrations/saleforceSweeper';
+import { authMiddleware } from './middleware/auth';
 
 const app = express();
 app.use(express.json());
@@ -23,11 +24,14 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(routes);
-
-// swagger
+// swagger UI for local API inspection (public - no API key required)
 const swaggerDocument = YAML.load(__dirname + '/swagger.yaml');
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
+// Mount the main router that contains API endpoints
+// Apply API auth middleware before routing (no-op in test mode)
+app.use(authMiddleware);
+app.use(routes);
 
 app.use(globalErrorHandler);
 

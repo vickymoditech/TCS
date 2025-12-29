@@ -9,9 +9,12 @@ import { validate, createCartSchema, addItemsSchema } from '../middleware/valida
 
 const router = Router();
 
+/**
+ * Cart-related routes mounted under /api in the main router.
+ */
 router.post('/cart', validate(createCartSchema), createCartHandler);
 router.get('/cart/:cartId', getCartHandler);
 router.post('/cart/items', validate(addItemsSchema), addItemsHandler);
 router.delete('/cart/:cartId/items/:itemId', removeItemHandler);
 
-export default router;
+export default router; 

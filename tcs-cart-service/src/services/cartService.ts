@@ -3,18 +3,38 @@ import { CartItemRequest, CartItemResponse, InvalidCartItem, CartResponse } from
 import { store } from '../store/inMemoryStore';
 import { SalesforceService } from '../integrations/salesforceService';
 import { CatalogService } from './catalogService';
+import { INVALID_ITEM_REASONS } from '../constants';
 
+/**
+ * Error thrown when a cart cannot be found.
+ */
 export class CartNotFoundError extends Error {}
+
+/**
+ * Error thrown on business validation failures (e.g., invalid quantities).
+ */
 export class ValidationError extends Error {}
 
+/**
+ * Service responsible for cart business logic and synchronization with Salesforce.
+ * It validates items, coordinates add/remove operations with Salesforce, and
+ * performs recovery when Salesforce contexts expire.
+ */
 export class CartService {
   private sfService: SalesforceService;
 
+  /**
+   * Create a new CartService and initialize its Salesforce integration instance.
+   */
   constructor() {
     this.sfService = new SalesforceService();
   }
 
-  createCart() {
+  /**
+   * Create a new cart, initialize a Salesforce context for it, and persist the
+   * initial empty cart in the store. Returns an enriched cart response.
+   */
+  createCart(): CartResponse {
     const cartId = uuidv4();
     const ctx = this.sfService.createContext();
     // record context creation timestamp so sweeper can expire the cart
@@ -22,13 +42,25 @@ export class CartService {
     return this.buildCartResponse(cartId);
   }
 
-  getCart(cartId: string) {
+  /**
+   * Return the enriched cart response for the given cartId.
+   * Throws CartNotFoundError when no cart is present.
+   */
+  getCart(cartId: string): CartResponse {
     const s = store.getCart(cartId);
     if (!s) throw new CartNotFoundError('Cart not found');
     return this.buildCartResponse(cartId);
   }
 
-  async addOrUpdateItems(cartId: string, items: CartItemRequest[]) {
+  /**
+   * Add or update multiple items for the provided cartId.
+   * - Validates each item against the product catalog
+   * - Attempts to add each valid item to Salesforce and updates local store
+   * - If the Salesforce context has expired, it will create a new context,
+   *   replay existing items, and retry the failed operation
+   * Returns an enriched cart response and a list of invalid items (if any).
+   */
+  async addOrUpdateItems(cartId: string, items: CartItemRequest[]): Promise<CartResponse> {
     const s = store.getCart(cartId);
     if (!s) throw new CartNotFoundError('Cart not found');
 
@@ -38,20 +70,20 @@ export class CartService {
     // Validate items at business level
     for (const it of items) {
       if (!it.itemId || typeof it.qty !== 'number' || it.qty <= 0) {
-        invalid.push({ itemId: it.itemId ?? 'UNKNOWN', reason: 'INVALID_QUANTITY' });
+        invalid.push({ itemId: it.itemId ?? 'UNKNOWN', reason: INVALID_ITEM_REASONS.INVALID_QUANTITY });
         continue;
       }
       const prod = CatalogService.find(it.itemId);
       if (!prod) {
-        invalid.push({ itemId: it.itemId, reason: 'ITEM_NOT_FOUND' });
+        invalid.push({ itemId: it.itemId, reason: INVALID_ITEM_REASONS.ITEM_NOT_FOUND });
         continue;
       }
       if (!prod.inStock) {
-        invalid.push({ itemId: it.itemId, reason: 'OUT_OF_STOCK' });
+        invalid.push({ itemId: it.itemId, reason: INVALID_ITEM_REASONS.OUT_OF_STOCK });
         continue;
       }
       if (!prod.eligible) {
-        invalid.push({ itemId: it.itemId, reason: 'ITEM_NOT_ELIGIBLE' });
+        invalid.push({ itemId: it.itemId, reason: INVALID_ITEM_REASONS.ITEM_NOT_ELIGIBLE });
         continue;
       }
       validItems.push(it);
@@ -72,7 +104,7 @@ export class CartService {
                 this.sfService.addItem(newCtx, existing);
               } catch (replayErr) {
                 // if replay fails for some existing item, mark as invalid but continue
-                invalid.push({ itemId: existing.itemId, reason: 'REPLAY_FAILED' });
+                invalid.push({ itemId: existing.itemId, reason: INVALID_ITEM_REASONS.REPLAY_FAILED });
               }
             }
             // update store context (record new context timestamp)
@@ -102,7 +134,12 @@ export class CartService {
     }
   }
 
-  async removeItem(cartId: string, itemId: string) {
+  /**
+   * Remove an item from the cart and mirror the removal to Salesforce. Handles
+   * Salesforce context expiry by creating a new context and replaying existing
+   * items before retrying the removal.
+   */
+  async removeItem(cartId: string, itemId: string): Promise<CartResponse> {
     const s = store.getCart(cartId);
     if (!s) throw new CartNotFoundError('Cart not found');
 
@@ -137,7 +174,11 @@ export class CartService {
     }
   }
 
-  private buildCartResponse(cartId: string, invalid: InvalidCartItem[] = []) {
+  /**
+   * Enrich stored cart items with catalog information and compute totals.
+   * This is a private helper used to construct the API response shape.
+   */
+  private buildCartResponse(cartId: string, invalid: InvalidCartItem[] = []): CartResponse {
     const s = store.getCart(cartId)!;
     const enriched = s.items.map((it) => {
       const prod = CatalogService.find(it.itemId)!;

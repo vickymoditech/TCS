@@ -82,6 +82,28 @@ SF_CART_TTL_MS=300000 # 5 minutes
 
 ---
 
+## Authentication 🔐
+
+- **How it works:** The API supports an API key provided either as the `x-api-key` header or as an `Authorization: Bearer <token>` header.
+- **Configure:** Set the key in the `API_TOKEN` environment variable (e.g., `export API_TOKEN=supersecret` or add to your `.env`). In Docker use `-e API_TOKEN=supersecret`.
+- **Behavior:**
+  - When `NODE_ENV === 'test'` the authentication middleware is skipped (tests do not require a key).
+  - If `API_TOKEN` is **not** set the server logs a warning and **allows** requests (convenient for local/dev), but you should set it in production.
+  - Requests with no or invalid token receive a **401 Unauthorized** response.
+- **Swagger UI:** The API docs at `/docs` are public and **do not** require the API key.
+
+**Examples:**
+
+```bash
+# Using x-api-key header
+curl -H "x-api-key: $API_TOKEN" http://localhost:3000/api/cart/<cartId>
+
+# Using Authorization Bearer header
+curl -H "Authorization: Bearer $API_TOKEN" http://localhost:3000/api/cart/<cartId>
+```
+
+---
+
 ## Running with Docker
 Build the image:
 

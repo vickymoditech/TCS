@@ -2,6 +2,10 @@ openapi: 3.0.0
 info:
   title: Cart Service
   version: 1.0.0
+
+security:
+  - ApiKeyAuth: []
+
 paths:
   /api/cart:
     post:
@@ -72,6 +76,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/CartResponse'
 components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
   schemas:
     CartItemRequest:
       type: object

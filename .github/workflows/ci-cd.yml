@@ -1,0 +1,54 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [ Develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ Develop ]
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  test:
+    name: Lint, Test & Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: tcs-cart-service
+
+      - name: Lint
+        run: npm run lint
+        working-directory: tcs-cart-service
+
+      - name: Test
+        run: npm test
+        working-directory: tcs-cart-service
+
+      - name: Build
+        run: npm run build
+        working-directory: tcs-cart-service
+

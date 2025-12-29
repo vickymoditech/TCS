@@ -1,25 +1,35 @@
-import { salesforceClient, SalesforceCartExpiredError } from './salesforceClient';
+import { salesforceClient, SalesforceCartExpiredError, SFItem } from './salesforceClient';
 
-// Thin adapter - no business logic here; errors bubble up for CartService to handle
+/**
+ * Thin adapter around the Salesforce client. Kept to separate integration
+ * concerns from higher-level business logic in CartService.
+ */
 export class SalesforceService {
 
-  createContext() {
+  /** Create a new Salesforce context id. */
+  createContext(): string {
     return salesforceClient.createContext();
   }
 
-  addItem(contextId: string, item: { itemId: string; qty: number }) {
+  /** Proxy to add an item. */
+  addItem(contextId: string, item: SFItem): SFItem[] {
     return salesforceClient.addItem(contextId, item);
   }
 
-  removeItem(contextId: string, itemId: string) {
+  /** Proxy to remove an item. */
+  removeItem(contextId: string, itemId: string): SFItem[] {
     return salesforceClient.removeItem(contextId, itemId);
   }
 
-  getCart(contextId: string) {
+  /** Proxy to read a cart by context id. */
+  getCart(contextId: string): SFItem[] {
     return salesforceClient.getCart(contextId);
   }
 
-  static isExpiredError(err: unknown) {
+  /**
+   * Helper to detect whether an error represents an expired Salesforce context.
+   */
+  static isExpiredError(err: unknown): err is SalesforceCartExpiredError {
     return err instanceof SalesforceCartExpiredError;
   }
-}
+} 
