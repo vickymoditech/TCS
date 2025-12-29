@@ -1,6 +1,6 @@
-# TCS Cart Service
+# Cart Service
 
-A small backend-only cart microservice written in **Node.js + TypeScript + Express**.
+A small backend-only cart microservice written in **Node.js, TypeScript, and Express**. (We could use Nest as well, but as per our discussion this is a small feature, I decided to continue with Node and Express.)
 
 This service implements a temporary cart backed by an in-memory store and a Salesforce test-double. It demonstrates handling of cart lifecycle, item validation, replaying items when the external (Salesforce) context expires, and a background sweeper that removes expired Salesforce contexts.
 
